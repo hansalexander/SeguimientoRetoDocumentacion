@@ -23,7 +23,7 @@ import {
 } from '@ionic/angular';
 
 import { addIcons } from 'ionicons';
-import { add, notifications } from 'ionicons/icons';
+import { add, notifications, statsChartOutline } from 'ionicons/icons';
 import {
   BehaviorSubject,
   combineLatest,
@@ -31,7 +31,7 @@ import {
   distinctUntilChanged,
   map,
   skip,
-  take
+  take,
 } from 'rxjs';
 
 import { ETIQUETA_ESTADO } from '../core/modelos';
@@ -43,20 +43,40 @@ const RESUMEN_VACIO: ResumenReto = {
   AMARILLO: 0,
   VERDE: 0,
   ABIERTA: 0,
-  PENDIENTE: 0
+  PENDIENTE: 0,
 };
 
 @Component({
   selector: 'app-retos-lista',
   imports: [
-    AsyncPipe, RouterLink, IonBadge, IonButton, IonButtons,
-    IonChip, IonContent, IonFab, IonFabButton, IonHeader,
-    IonIcon, IonItem, IonLabel, IonList, IonRefresher,
-    IonRefresherContent, IonSearchbar, IonText, IonTitle,
+    AsyncPipe,
+    RouterLink,
+    IonBadge,
+    IonButton,
+    IonButtons,
+    IonChip,
+    IonContent,
+    IonFab,
+    IonFabButton,
+    IonHeader,
+    IonIcon,
+    IonItem,
+    IonLabel,
+    IonList,
+    IonRefresher,
+    IonRefresherContent,
+    IonSearchbar,
+    IonText,
+    IonTitle,
     IonToolbar,
   ],
 
-  styles: `.semaforos { display: flex; gap: 4px; }`,
+  styles: `
+    .semaforos {
+      display: flex;
+      gap: 4px;
+    }
+  `,
 
   template: `
     <ion-header>
@@ -64,6 +84,9 @@ const RESUMEN_VACIO: ResumenReto = {
         <ion-title>Mis retos</ion-title>
 
         <ion-buttons slot="end">
+          <ion-button routerLink="/dashboard" aria-label="Ver estadísticas">
+            <ion-icon slot="icon-only" name="stats-chart-outline"> </ion-icon>
+          </ion-button>
           <ion-button routerLink="/alertas" aria-label="Ver alertas">
             <ion-icon slot="icon-only" name="notifications"></ion-icon>
 
@@ -83,7 +106,6 @@ const RESUMEN_VACIO: ResumenReto = {
     </ion-header>
 
     <ion-content>
-
       <ion-refresher slot="fixed" (ionRefresh)="refrescar($any($event))">
         <ion-refresher-content></ion-refresher-content>
       </ion-refresher>
@@ -95,18 +117,13 @@ const RESUMEN_VACIO: ResumenReto = {
       }
 
       @if (vista$ | async; as vista) {
-
         @if (vista.length === 0) {
-          <p class="ion-padding">
-            No hay retos. Pulsa + para crear el primero.
-          </p>
+          <p class="ion-padding">No hay retos. Pulsa + para crear el primero.</p>
         }
 
         <ion-list>
           @for (item of vista; track item.reto.id) {
-
             <ion-item [routerLink]="['/retos', item.reto.id]" detail>
-
               <ion-label>
                 <h2>{{ item.reto.titulo }}</h2>
                 <p>
@@ -116,7 +133,6 @@ const RESUMEN_VACIO: ResumenReto = {
               </ion-label>
 
               <div slot="end" class="semaforos">
-
                 @if (item.resumen.ROJO) {
                   <ion-chip color="danger">
                     {{ item.resumen.ROJO }}
@@ -134,7 +150,6 @@ const RESUMEN_VACIO: ResumenReto = {
                     {{ item.resumen.VERDE }}
                   </ion-chip>
                 }
-
               </div>
             </ion-item>
           }
@@ -146,12 +161,10 @@ const RESUMEN_VACIO: ResumenReto = {
           <ion-icon name="add"></ion-icon>
         </ion-fab-button>
       </ion-fab>
-
     </ion-content>
   `,
 })
 export class RetosListaPage {
-
   private readonly seguimiento = inject(SeguimientoService);
 
   private readonly busqueda$ = new BehaviorSubject<string>('');
@@ -172,37 +185,32 @@ export class RetosListaPage {
     ),
 
     this.seguimiento.resumen$,
-
   ]).pipe(
-
     map(([retos, texto, resumen]) =>
       retos
-        .filter((reto) =>
-          reto.titulo.toLowerCase().includes(texto)
-        )
+        .filter((reto) => reto.titulo.toLowerCase().includes(texto))
         .map((reto) => ({
           reto,
-          resumen: resumen.get(reto.id) ?? RESUMEN_VACIO
+          resumen: resumen.get(reto.id) ?? RESUMEN_VACIO,
         })),
     ),
   );
 
   constructor() {
-    addIcons({ add, notifications });
+    addIcons({
+      add,
+      notifications,
+      statsChartOutline,
+    });
   }
 
   protected buscar(texto: string | null | undefined): void {
     this.busqueda$.next(texto ?? '');
   }
 
-  protected refrescar(
-    evento: { target: { complete(): void } }
-  ): void {
-
+  protected refrescar(evento: { target: { complete(): void } }): void {
     this.seguimiento.recargar();
 
-    this.seguimiento.retos$
-      .pipe(skip(1), take(1))
-      .subscribe(() => evento.target.complete());
+    this.seguimiento.retos$.pipe(skip(1), take(1)).subscribe(() => evento.target.complete());
   }
 }

@@ -116,27 +116,6 @@ Se diseñaron ocho pruebas unitarias adicionales para comprobar:
 7. Las semanas incumplidas.
 8. Las recomendaciones automáticas.
 
-## 10. Evidencias
-
-### Dashboard en la aplicación web
-
-![Dashboard web](Documentacion/evidencias-dashboard/dashboard-web.png)
-
-### Dashboard en Android
-
-![Dashboard Android](Documentacion/evidencias-dashboard/dashboard-android.png)
-
-### Gráfico de evolución semanal
-
-![Grafico](Documentacion/evidencias-dashboard/dashboard-grafico.png)
-
-### Filtro por reto
-
-![Filtro](Documentacion/evidencias-dashboard/dashboard-filtro.png)
-
-### Pruebas unitarias
-
-![Pruebas](Documentacion/evidencias-dashboard/pruebas-unitarias.png)
 
 ## 11. Conclusión
 

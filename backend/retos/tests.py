@@ -1,70 +1,135 @@
+from datetime import date, timedelta
 
+from django.test import override_settings
+from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
-from django.urls import reverse
-from .models import Reto, Avance
+
+from .models import Reto, TareaSemanal
+
+HOY = timezone.localdate()
 
 
-class RetoTests(APITestCase):
+class RetoApiTests(APITestCase):
 
-    def setUp(self):
-        self.reto = Reto.objects.create(
-            titulo='Reto de prueba',
-            descripcion='Descripcion del reto',
-            fecha_inicio='2026-11-18',
-            fecha_fin='2026-11-30',
-            estado='PENDIENTE'
+    def test_crear_y_listar_reto(self):
+        url = reverse('reto-list')
+        datos = {
+            'titulo': 'Leer 10 libros',
+            'fecha_inicio': '2026-11-18'
+        }
+
+        respuesta = self.client.post(url, datos, format='json')
+        self.assertEqual(
+            respuesta.status_code,
+            status.HTTP_201_CREATED
+        )
+        self.assertEqual(Reto.objects.count(), 1)
+
+        respuesta = self.client.get(url)
+        self.assertEqual(
+            respuesta.status_code,
+            status.HTTP_200_OK
+        )
+        self.assertEqual(respuesta.data['count'], 1)
+
+    def test_rechaza_fecha_fin_anterior_a_inicio(self):
+        datos = {
+            'titulo': 'Fechas',
+            'fecha_inicio': '2026-11-18',
+            'fecha_fin': '2026-11-01'
+        }
+
+        respuesta = self.client.post(
+            reverse('reto-list'), datos, format='json'
         )
 
-    def test_listar_retos(self):
-        url = reverse('reto-list')
-        respuesta = self.client.get(url)
+        self.assertEqual(
+            respuesta.status_code,
+            status.HTTP_400_BAD_REQUEST
+        )
+        self.assertIn('fecha_fin', respuesta.data)
 
-        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(respuesta.data), 1)
+    def test_rechaza_porcentaje_mayor_a_100(self):
+        reto = Reto.objects.create(
+            titulo='Correr',
+            fecha_inicio=date(2026, 11, 18)
+        )
 
-    def test_crear_reto(self):
-        url = reverse('reto-list')
         datos = {
-            'titulo': 'Nuevo reto',
-            'descripcion': 'Reto creado desde una prueba',
-            'fecha_inicio': '2026-11-18',
-            'fecha_fin': '2026-11-30',
-            'estado': 'PENDIENTE'
-        }
-
-        respuesta = self.client.post(url, datos, format='json')
-
-        self.assertEqual(respuesta.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Reto.objects.count(), 2)
-
-    def test_crear_avance(self):
-        url = reverse('avance-list')
-        datos = {
-            'reto': self.reto.id,
+            'reto': reto.id,
             'fecha': '2026-11-18',
-            'descripcion': 'Avance de prueba',
-            'porcentaje': 25
+            'descripcion': 'Prueba',
+            'porcentaje': 150
         }
 
-        respuesta = self.client.post(url, datos, format='json')
+        respuesta = self.client.post(
+            reverse('avance-list'), datos, format='json'
+        )
 
-        self.assertEqual(respuesta.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Avance.objects.count(), 1)
+        self.assertEqual(
+            respuesta.status_code,
+            status.HTTP_400_BAD_REQUEST
+        )
+        self.assertIn('porcentaje', respuesta.data)
 
-    def test_actualizar_reto(self):
-        url = reverse('reto-detail', args=[self.reto.id])
+
+@override_settings(
+    SEMESTRE_INICIO=HOY - timedelta(weeks=6),
+    SEMANA_DESDE=7,
+    SEMANA_HASTA=15
+)
+class TareaSemanalTests(APITestCase):
+
+    def test_crear_reto_genera_semanas_7_a_15(self):
         datos = {
-            'titulo': 'Reto actualizado',
-            'descripcion': 'Descripcion actualizada',
-            'fecha_inicio': '2026-11-18',
-            'fecha_fin': '2026-11-30',
-            'estado': 'EN_CURSO'
+            'titulo': 'Reto semanal',
+            'fecha_inicio': str(HOY)
         }
 
-        respuesta = self.client.put(url, datos, format='json')
+        respuesta = self.client.post(
+            reverse('reto-list'), datos, format='json'
+        )
 
-        self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            respuesta.status_code,
+            status.HTTP_201_CREATED
+        )
 
-        self.reto.refresh_from_db()
-        self.assertEqual(self.reto.estado, 'EN_CURSO')
+        semanas = list(
+            TareaSemanal.objects.filter(
+                reto_id=respuesta.data['id']
+            ).values_list('semana', flat=True)
+        )
+
+        self.assertEqual(semanas, list(range(7, 16)))
+
+    def test_semana_cerrada_no_se_puede_modificar(self):
+        reto = Reto.objects.create(
+            titulo='Cerrado',
+            fecha_inicio=HOY
+        )
+
+        tarea = TareaSemanal.objects.create(
+            reto=reto,
+            semana=6,
+            fecha_inicio=HOY - timedelta(days=13),
+            fecha_fin=HOY - timedelta(days=7),
+        )
+
+        url = reverse(
+            'tareasemanal-detail',
+            args=[tarea.id]
+        )
+
+        respuesta = self.client.patch(
+            url,
+            {'porcentaje': 100},
+            format='json'
+        )
+
+        self.assertEqual(
+            respuesta.status_code,
+            status.HTTP_400_BAD_REQUEST
+        )

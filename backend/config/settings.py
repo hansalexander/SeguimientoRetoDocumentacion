@@ -1,5 +1,5 @@
-
 import os
+from datetime import date
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -27,11 +27,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # Aplicaciones externas
-    'rest_framework',
-    'corsheaders',
-    'drf_yasg',
-
+   # Aplicaciones externas
+'rest_framework',
+'corsheaders',
+'drf_yasg',
+'django_filters',
     # Aplicación del proyecto
     'retos',
 ]
@@ -75,7 +75,7 @@ DATABASES = {
         'USER': os.getenv('DB_USER'),
         'PASSWORD': os.getenv('DB_PASSWORD'),
         'HOST': os.getenv('DB_HOST', '127.0.0.1'),
-        'PORT': os.getenv('DB_PORT', '3307'),
+        'PORT': os.getenv('DB_PORT', '3309'),
         'OPTIONS': {'charset': 'utf8mb4'},
     }
 }
@@ -111,12 +111,34 @@ STATIC_URL = 'static/'
 # Tipo de clave primaria
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Configuración de Django REST Framework
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS':
+        'rest_framework.pagination.PageNumberPagination',
+
+    'PAGE_SIZE': 20,
+
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
+}
 # Configuración CORS
 CORS_ALLOWED_ORIGINS = [
     origen.strip()
     for origen in os.getenv(
         'CORS_ALLOWED_ORIGINS',
-        'http://localhost:8100,http://localhost:4200,https://localhost'
+        'http://localhost:8100,http://localhost:4200,https://localhost,http://localhost'
     ).split(',')
     if origen.strip()
 ]
+
+# Calendario del periodo académico
+SEMESTRE_INICIO = date.fromisoformat(
+    os.getenv('SEMESTRE_INICIO', '2026-10-05')
+)
+
+SEMANA_DESDE = int(os.getenv('SEMANA_DESDE', '7'))
+
+SEMANA_HASTA = int(os.getenv('SEMANA_HASTA', '15'))
